@@ -1,8 +1,15 @@
+
+
 #include <uWS/uWS.h>
+
+
 #include <iostream>
+
 #include "json.hpp"
 #include "PID.h"
 #include <math.h>
+
+
 
 // for convenience
 using json = nlohmann::json;
@@ -34,6 +41,7 @@ int main()
 
   PID pid;
   // TODO: Initialize the pid variable.
+  pid.Init(1.13205, 0.0001, 11.05);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -57,9 +65,35 @@ int main()
           * NOTE: Feel free to play around with the throttle and speed. Maybe use
           * another PID controller to control the speed!
           */
-          
+          pid.UpdateError(cte);
+          steer_value = -pid.Kp * pid.p_error - pid.Kd * pid.d_error - pid.Ki * pid.i_error;
+          if (steer_value > 1){
+            steer_value = 1;
+          }
+          if (steer_value < -1){
+            steer_value = -1;
+          }
+
+          // The width of the road is around 10m, so 4.5 is set as the limit for CTE
+          // As long the CTE larger than 4.5, the simulator will restart
+          if (fabs(cte) > 4.5){
+            pid.Restart(ws);
+          }
+
+          // The twiddle process disabled here
+          // Could be restarted by remove all the "//"
+          //if(pid.step_num > 2000){
+            //pid.twiddle();
+            //pid.Restart(ws);
+          //}
+
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+
+          //std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+
+          //std::cout << "p_error " << pid.p_error << " d_error " << pid.d_error << " i_error " << pid.i_error << std::endl;
+
+          //std::cout << "Kp " << pid.Kp << " Ki " << pid.Ki << " Kd " << pid.Kd <<std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
